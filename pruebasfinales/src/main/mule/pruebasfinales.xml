@@ -1,0 +1,214 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd">
+	<http:listener-config name="HTTP_Listener_config" doc:name="HTTP Listener config" doc:id="908d9e14-141e-4e8d-bea2-c4bc323d7417" >
+		<http:listener-connection host="0.0.0.0" port="8091" />
+	</http:listener-config>
+	<http:request-config name="HTTP_Request_configurationBancoPichincha" doc:name="HTTP Request configuration" doc:id="7ae6a3ff-0e90-4d9b-9bb9-d7e2502483bf" >
+		<http:request-connection host="localhost" port="5000" />
+	</http:request-config>
+	<http:request-config name="HTTP_Request_configurationbancoGuayaqui" doc:name="HTTP Request configuration" doc:id="40deeb57-6528-4aa2-a967-8dc7d23d1807" >
+		<http:request-connection host="localhost" port="5001" />
+	</http:request-config>
+	<http:request-config name="HTTP_Request_configurationbancoAustro" doc:name="HTTP Request configuration" doc:id="81b268d4-17fd-4b5b-bd8c-0a0202caab12" >
+		<http:request-connection host="localhost" port="5002" />
+	</http:request-config>
+	<flow name="pruebasfinalesFlow" doc:id="483ec4fe-595c-483f-97a7-99edb60e2bbb" >
+		<http:listener doc:name="Listener" doc:id="72e13418-ba98-4286-937c-ca3a08159056" config-ref="HTTP_Listener_config" path="/bancos" allowedMethods="GET, POST"/>
+		<set-payload value="#[payload]" doc:name="Set Payload" doc:id="da16719a-e42c-4288-af6c-a231249d7a09" />
+		<flow-ref doc:name="Flow Reference" doc:id="8961b950-3e51-4224-ab15-f99eaa3089a7" name="variablesJSON"/>
+		<choice doc:name="Choice" doc:id="4ac291ff-4610-4d86-b02e-a8b1928b79ae" >
+			<when expression="#[vars.bancoEmisor == 1]">
+				<http:request method="GET" doc:name="Request" doc:id="d622adff-cfa1-4092-b871-cd2b198c9916" config-ref="HTTP_Request_configurationBancoPichincha" path="/search">
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	cuenta : vars.cuentaEmisor
+}]]]></http:query-params>
+				</http:request>
+				<set-variable value="#[payload.usuarioMontoBP]" doc:name="Set Variable" doc:id="945a5fd1-6763-487b-83bb-f3cb5a6b2fc6" variableName="montoEmisorBP"/>
+				<choice doc:name="Choice" doc:id="8896343d-6f18-4d35-a598-964fd4a07d9e" >
+					<when expression="vars.montoEmisorBP &gt;= vars.montoTransferir">
+						<flow-ref doc:name="Flow Reference" doc:id="3dfde6cc-1a2f-479e-b07f-cd81b07bca3b" name="verificarAumentarCuentaDestino"/>
+						<choice doc:name="Choice" doc:id="822726e1-f0da-4f59-9f77-8a6199f573e3">
+							<when expression="#[payload.actualizado == 1]">
+								<http:request method="POST" doc:name="Request" doc:id="57a96800-5fd4-4f37-8c0a-8adcf81032f9" config-ref="HTTP_Request_configurationBancoPichincha" path="/updateEmisor">
+							<http:body><![CDATA[#[%dw 2.0
+
+output application/json
+
+---
+
+{
+
+cuenta : vars.cuentaEmisor,
+monto : vars.montoTransferir
+
+}]]]></http:body>
+						</http:request>
+								<set-payload value='#["Transaccion Exitosa"]' doc:name="Set Payload" doc:id="ceb5ebba-91ca-4326-aada-7c156b97403b" />
+							</when>
+							<otherwise >
+								<set-payload value='#[vars.cuentaAumentadaBP]' doc:name="Set Payload" doc:id="180d5241-834d-4c28-860d-b52847d07ed7" />
+							</otherwise>
+						</choice>
+					</when>
+					<otherwise >
+						<set-payload value='#["Monto excesivo o cuenta no válida"]' doc:name="Set Payload" doc:id="0eafb6ba-9512-4e21-80b0-1ba52b93ac0e" />
+					</otherwise>
+				</choice>
+			</when>
+			<when expression="#[vars.bancoEmisor == 2]">
+				<http:request method="GET" doc:name="Request" doc:id="e017b5ce-5e09-49f4-8ee1-6d31452ee594" config-ref="HTTP_Request_configurationbancoGuayaqui" path="/search">
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	cuenta : vars.cuentaEmisor
+}]]]></http:query-params>
+				</http:request>
+				<set-variable value="#[payload.usuarioMontoBG]" doc:name="Set Variable" doc:id="06898e42-41a6-4f9a-9c32-cb1e6bd00cd3" variableName="montoEmisorBG"/>
+				<choice doc:name="Choice" doc:id="a6bd0cb7-e941-4bf3-ac9e-b8c2e116f910" >
+					<when expression="#[vars.montoEmisorBG &gt;= vars.montoTransferir]">
+						<flow-ref doc:name="Flow Reference" doc:id="3183f9c3-8a99-4ce3-9127-cc1cf03c626f" name="verificarAumentarCuentaDestino"/>
+						<choice doc:name="Choice" doc:id="ce62c8fe-31ed-4062-9303-bc7644674517">
+							<when expression="#[payload.actualizado == 1]">
+								<http:request method="POST" doc:name="Request" doc:id="c04d9a25-057a-42b7-a03b-3fc3c9ac6fc1" path="/updateEmisor" config-ref="HTTP_Request_configurationbancoGuayaqui">
+							<http:body><![CDATA[#[%dw 2.0
+
+output application/json
+
+---
+
+{
+
+cuenta : vars.cuentaEmisor,
+monto : vars.montoTransferir
+
+}]]]></http:body>
+						</http:request>
+								<set-payload value='#["Transaccion Exitosa"]' doc:name="Set Payload" doc:id="80bb869b-a6b3-400d-bbaa-ac3d855ad06b" />
+							</when>
+							<otherwise >
+								<set-payload value='#[payload.actualizado]' doc:name="Set Payload" doc:id="e00f86c2-3ce3-4ad2-830c-5aeeb98c5f26" />
+							</otherwise>
+						</choice>
+					</when>
+					<otherwise >
+						<set-payload value='#["Monto excesivo o cuenta no válida"]' doc:name="Set Payload" doc:id="c545cff3-cd17-4172-a3a1-eb6f76c1b22d" />
+					</otherwise>
+				</choice>
+			</when>
+			<when expression="#[vars.bancoEmisor == 3]">
+				<http:request method="GET" doc:name="Request" doc:id="668703de-274f-44bf-a3ec-7ac3eb56c18a" config-ref="HTTP_Request_configurationbancoAustro" path="/search">
+					<http:query-params ><![CDATA[#[output application/java
+---
+{
+	cuenta : vars.cuentaEmisor
+}]]]></http:query-params>
+				</http:request>
+				<set-variable value="#[payload.usuarioMontoBA]" doc:name="Set Variable" doc:id="e0893e13-7a7a-4551-bc12-d2782d128476" variableName="montoEmisorBA"/>
+				<choice doc:name="Choice" doc:id="799a69a4-da5d-4a09-a42f-60bc89ba3f88" >
+					<when expression="vars.montoEmisorBA &gt;= vars.montoTransferir">
+						<flow-ref doc:name="Flow Reference" doc:id="20d856ea-51ab-4395-940a-35f9a3cd0718" name="verificarAumentarCuentaDestino"/>
+						<choice doc:name="Choice" doc:id="67699534-66b6-4141-bbba-a5342c717e97">
+							<when expression="#[payload.actualizado == 1]">
+								<http:request method="POST" doc:name="Request" doc:id="c3d374bc-359c-48de-9247-6c7f2ba34708" path="/updateEmisor" config-ref="HTTP_Request_configurationbancoAustro">
+							<http:body><![CDATA[#[%dw 2.0
+
+output application/json
+
+---
+
+{
+
+cuenta : vars.cuentaEmisor,
+monto : vars.montoTransferir
+
+}]]]></http:body>
+						</http:request>
+								<set-payload value='#["Transaccion Exitosa"]' doc:name="Set Payload" doc:id="5c053bfa-4584-4ac5-8695-e5b8da3f0090" />
+							</when>
+							<otherwise >
+								<set-payload value='#["No se realizo la transaccion"]' doc:name="Set Payload" doc:id="fd744e30-72d1-4034-a4bf-752f64cc3ab8" />
+							</otherwise>
+						</choice>
+					</when>
+					<otherwise >
+						<set-payload value='#["Monto excesivo o cuenta no válida"]' doc:name="Set Payload" doc:id="b0464dae-e7c7-4fae-8331-a6cd9114b2d9" />
+					</otherwise>
+				</choice>
+			</when>
+			<otherwise >
+				<set-payload value='#["Banco no Encontrado"]' doc:name="Set Payload" doc:id="e1904b4f-34ec-42ab-8bf4-fc35e486d960" />
+			</otherwise>
+		</choice>
+	</flow>
+	<flow name="variablesJSON" doc:id="3801ea43-fb48-41f2-a1a9-fb7adf44bc89" >
+		<set-variable value="#[payload.bancoE]" doc:name="Set Variable" doc:id="3800567b-1608-4c8e-8fc2-158e5cc93d52" variableName="bancoEmisor"/>
+		<set-variable value="#[payload.bancoR]" doc:name="Set Variable" doc:id="1394cc8a-d586-4073-b7bd-cc5fa5ca2dea" variableName="bancoReceptor"/>
+		<set-variable value="#[payload.cuentaE]" doc:name="Set Variable" doc:id="242fedfb-c11e-49a4-ae5f-7125f54dfed9" variableName="cuentaEmisor"/>
+		<set-variable value="#[payload.cuentaR]" doc:name="Set Variable" doc:id="5b5f3521-344d-4251-a1e8-5174ebf9709b" variableName="cuentaReceptor"/>
+		<set-variable value="#[payload.monto]" doc:name="Set Variable" doc:id="4b02fc99-1f2c-4da3-8511-822ad8658326" variableName="montoTransferir"/>
+	</flow>
+	<flow name="verificarAumentarCuentaDestino" doc:id="8b259fd8-081b-4aa9-b650-6d978fe5d720" >
+		<choice doc:name="Choice" doc:id="49d00a73-7d50-4838-b137-191c4600f676" >
+			<when expression="#[vars.bancoReceptor == 1]">
+				<http:request method="POST" doc:name="Request" doc:id="008d659b-aa75-4ef2-80f7-0d74bd919980" config-ref="HTTP_Request_configurationBancoPichincha" path="/update">
+					<http:body ><![CDATA[#[%dw 2.0
+
+output application/json
+
+---
+
+{
+
+cuenta : vars.cuentaReceptor,
+monto : vars.montoTransferir
+
+}]]]></http:body>
+		</http:request>
+				<set-variable value="#[payload.actualizado]" doc:name="Set Variable" doc:id="83235078-a959-4938-843f-b21f866725c6" variableName="cuentaAumentadaBP"/>
+			</when>
+			<when expression="#[vars.bancoReceptor == 2]">
+				<http:request method="POST" doc:name="Request" doc:id="b0a270f4-ab42-458b-a091-3a603b547d0b" config-ref="HTTP_Request_configurationbancoGuayaqui" path="/update">
+			<http:body><![CDATA[#[%dw 2.0
+
+output application/json
+
+---
+
+{
+
+cuenta : vars.cuentaReceptor,
+monto : vars.montoTransferir
+
+}]]]></http:body>
+		</http:request>
+				<set-variable value="#[payload.actualizado]" doc:name="Set Variable" doc:id="d95f775c-c413-44ae-9e5d-7e69adb74b8e" variableName="cuentaAumentadaBG"/>
+			</when>
+			<when expression="#[vars.bancoReceptor == 3]">
+				<http:request method="POST" doc:name="Request" doc:id="1ac9da30-0014-4712-92b7-1a8882447e15" config-ref="HTTP_Request_configurationbancoAustro" path="/update">
+			<http:body><![CDATA[#[%dw 2.0
+
+output application/json
+
+---
+
+{
+
+cuenta : vars.cuentaReceptor,
+monto : vars.montoTransferir
+
+}]]]></http:body>
+		</http:request>
+				<set-variable value="#[payload.actualizado]" doc:name="Set Variable" doc:id="0ba6f7bd-24dc-4523-97fc-a66816f01a41" variableName="cuentaAumentadaBA"/>
+			</when>
+			<otherwise>
+				<set-payload value='#["Banco Receptor no Encontrado"]' doc:name="Set Payload" doc:id="4c48a00b-6c29-4498-9897-532eadde8b77" />
+			</otherwise>
+		</choice>
+	</flow>
+</mule>
